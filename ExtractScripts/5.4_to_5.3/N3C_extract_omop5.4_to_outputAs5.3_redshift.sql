@@ -233,10 +233,10 @@ SELECT
    CARE_SITE_ID,
    VISIT_SOURCE_VALUE,
    VISIT_SOURCE_CONCEPT_ID,
-   ADMITTING_SOURCE_CONCEPT_ID,
-   ADMITTING_SOURCE_VALUE,
-   DISCHARGE_TO_CONCEPT_ID,
-   DISCHARGE_TO_SOURCE_VALUE,
+   Admitted_from_concept_id as ADMITTING_SOURCE_CONCEPT_ID, -- omop 5.4 vocab to omop 5.3
+   Admitted_from_source_value as ADMITTING_SOURCE_VALUE, -- see above
+   Discharged_to_concept_id as DISCHARGE_TO_CONCEPT_ID, -- see above
+   Discharged_to_source_value as DISCHARGE_TO_SOURCE_VALUE, -- see above
    PRECEDING_VISIT_OCCURRENCE_ID
 FROM @cdmDatabaseSchema.VISIT_OCCURRENCE v
 JOIN @resultsDatabaseSchema.N3C_COHORT n
@@ -367,11 +367,7 @@ SELECT
 FROM @cdmDatabaseSchema.MEASUREMENT m
 JOIN @resultsDatabaseSchema.N3C_COHORT n
   ON M.PERSON_ID = N.PERSON_ID
-WHERE m.MEASUREMENT_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD');
-
--- TO_DATE('2022-01-01', 'YYYY-MM-DD')
---	AND m.MEASUREMENT_DATE < TO_DATE('2023-01-01', 'YYYY-MM-DD');
-
+WHERE @dateRangePartition;
 
 --OBSERVATION
 --OUTPUT_FILE: OBSERVATION.csv

@@ -4,7 +4,7 @@
 install.packages("remotes")
 library(remotes)
 Sys.setenv(JAVA_HOME="")
-projectRoot <- "C:/Users/mpagel/OneDrive - Emory University/Documents/ETL/N3C/"
+projectRoot <- "C:/Users/" # where are these scripts running from. replace with your path.
 pathToDriver <- paste0(projectRoot,"drivers")
 downloadJdbcDrivers("redshift",pathToDriver=pathToDriver)
 setwd(paste0(projectRoot,"Phenotype_Data_Acquisition"))
@@ -13,7 +13,7 @@ setwd(paste0(projectRoot,"Phenotype_Data_Acquisition"))
 # Sys.getenv("JAVA_HOME")
 
 
-remotes::install_github(repo = "National-COVID-Cohort-Collaborative/Phenotype_Data_Acquisition"
+remotes::install_github(repo = "Emory-CTSA/N3C_Phenotype_Data_Acquisition"
                ,ref = "master"
                ,subdir = "Exporters/RExporter"
                ,INSTALL_opts = "--no-multiarch"
