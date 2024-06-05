@@ -150,7 +150,7 @@ runExtraction  <- function(connectionDetails,
   mergedDT <- cjDT[sqlsDT,,nomatch=NA]
   mergedDT[!is.na(newSql),sql:=newSql]
   mergedDT[!is.na(newFileName),outputFolder:=paste0(outputFolder,"toglob/")]
-  mergedDT[is.na(newFileName),newFileName:=fileName)]
+  mergedDT[is.na(newFileName),newFileName:=fileName]
   # check if each sub-file for e.g. Measurement exists
   mergedDT[,fullPathName:=paste0(outputFolder,newFileName)][file.exists(fullPathName),process:=!fileRecent(fullPathName,daysToCheck)]
   processDT <- mergedDT[process==TRUE,]
