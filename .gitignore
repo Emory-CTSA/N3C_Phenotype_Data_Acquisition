@@ -3,3 +3,12 @@
 .RData
 .Ruserdata
 /.vs
+drivers/*
+output/*
+working_directory/
+!drivers/.empty
+!output/.empty
+!working_directory/.empty
+*/.vshistory/
+.vshistory/
+

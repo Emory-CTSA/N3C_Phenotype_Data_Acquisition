@@ -22,16 +22,16 @@ RELEASE DATE: 2-10-2020
 
 --MANIFEST TABLE: CHANGE PER YOUR SITE'S SPECS
 --OUTPUT_FILE: MANIFEST.csv
-select
+SELECT
    '@siteAbbrev' as SITE_ABBREV,
    '@siteName'    AS SITE_NAME,
    '@contactName' as CONTACT_NAME,
    '@contactEmail' as CONTACT_EMAIL,
    '@cdmName' as CDM_NAME,
    '@cdmVersion' as CDM_VERSION,
-   (SELECT  vocabulary_version FROM @resultsDatabaseSchema.N3C_PRE_COHORT LIMIT 1) AS VOCABULARY_VERSION,
+   (SELECT vocabulary_version FROM @resultsDatabaseSchema.N3C_PRE_COHORT LIMIT 1) AS VOCABULARY_VERSION,
    'Y' as N3C_PHENOTYPE_YN,
-   (SELECT  phenotype_version FROM @resultsDatabaseSchema.N3C_PRE_COHORT LIMIT 1) as N3C_PHENOTYPE_VERSION,
+   (SELECT phenotype_version FROM @resultsDatabaseSchema.N3C_PRE_COHORT LIMIT 1) as N3C_PHENOTYPE_VERSION,
    '@shiftDateYN' as SHIFT_DATE_YN,
    '@maxNumShiftDays' as MAX_NUM_SHIFT_DAYS,
    CAST(CURRENT_DATE as TIMESTAMP) as RUN_DATE,
@@ -40,10 +40,11 @@ select
 
 --VALIDATION_SCRIPT
 --OUTPUT_FILE: EXTRACT_VALIDATION.csv
-SELECT
+SELECT 
 	'PERSON' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'person_id' DUPED_UNIQUE_COLUMN
+    ,x.person_id val
 FROM @cdmDatabaseSchema.PERSON x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -51,10 +52,11 @@ GROUP BY x.person_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'OBSERVATION_PERIOD' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'observation_period_id' DUPED_UNIQUE_COLUMN
+    ,x.observation_period_id val
 FROM @cdmDatabaseSchema.OBSERVATION_PERIOD x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -63,10 +65,11 @@ GROUP BY x.observation_period_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'VISIT_OCCURRENCE' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'visit_occurrence_id' DUPED_UNIQUE_COLUMN
+    ,x.visit_occurrence_id val
 FROM @cdmDatabaseSchema.VISIT_OCCURRENCE x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -75,10 +78,11 @@ GROUP BY x.visit_occurrence_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'CONDITION_OCCURRENCE' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'condition_occurrence_id' DUPED_UNIQUE_COLUMN
+    ,x.condition_occurrence_id val
 FROM @cdmDatabaseSchema.CONDITION_OCCURRENCE x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -87,10 +91,11 @@ GROUP BY x.condition_occurrence_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'DRUG_EXPOSURE' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'drug_exposure_id' DUPED_UNIQUE_COLUMN
+    ,x.drug_exposure_id val
 FROM @cdmDatabaseSchema.DRUG_EXPOSURE x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -99,10 +104,11 @@ GROUP BY x.drug_exposure_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'DEVICE_EXPOSURE' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'device_exposure_id' DUPED_UNIQUE_COLUMN
+    ,x.device_exposure_id val
 FROM @cdmDatabaseSchema.DEVICE_EXPOSURE x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -111,10 +117,11 @@ GROUP BY x.device_exposure_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'PROCEDURE_OCCURRENCE' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'procedure_occurrence_id' DUPED_UNIQUE_COLUMN
+    ,x.procedure_occurrence_id val
 FROM @cdmDatabaseSchema.PROCEDURE_OCCURRENCE x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -123,10 +130,11 @@ GROUP BY x.procedure_occurrence_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'MEASUREMENT' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'measurement_id' DUPED_UNIQUE_COLUMN
+    ,x.measurement_id val
 FROM @cdmDatabaseSchema.MEASUREMENT x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -135,10 +143,11 @@ GROUP BY x.measurement_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'OBSERVATION' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'observation_id' DUPED_UNIQUE_COLUMN
+    ,x.observation_id val
 FROM @cdmDatabaseSchema.OBSERVATION x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -147,37 +156,41 @@ GROUP BY x.observation_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'LOCATION' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'location_id' DUPED_UNIQUE_COLUMN
+    ,x.location_id val
 FROM @cdmDatabaseSchema.LOCATION x
 GROUP BY x.location_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'CARE_SITE' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'care_site_id' DUPED_UNIQUE_COLUMN
+    ,x.care_site_id val
 FROM @cdmDatabaseSchema.CARE_SITE x
 GROUP BY x.care_site_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'PROVIDER' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'' DUPED_UNIQUE_COLUMN
+    ,x.provider_id val
 FROM @cdmDatabaseSchema.PROVIDER x
 GROUP BY x.provider_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'DRUG_ERA' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'drug_era_id' DUPED_UNIQUE_COLUMN
+    ,x.drug_era_id val
 FROM @cdmDatabaseSchema.DRUG_ERA x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -186,10 +199,11 @@ GROUP BY x.drug_era_id
 HAVING COUNT(*) > 1
 
 UNION
-SELECT
+SELECT 
 	'CONDITION_ERA' TABLE_NAME
 	,COUNT(*) DUP_COUNT
 	,'condition_era_id' DUPED_UNIQUE_COLUMN
+    ,x.condition_era_id val
 FROM @cdmDatabaseSchema.CONDITION_ERA x
 INNER JOIN @resultsDatabaseSchema.N3C_COHORT n3c
 ON x.person_id = n3c.person_id
@@ -199,14 +213,14 @@ HAVING COUNT(*) > 1;
 
 --PERSON
 --OUTPUT_FILE: PERSON.csv
-SELECT
+SELECT DISTINCT
    p.PERSON_ID,
    GENDER_CONCEPT_ID,
    COALESCE(YEAR_OF_BIRTH,DATE_PART('year', birth_datetime )) as YEAR_OF_BIRTH,
    COALESCE(MONTH_OF_BIRTH,DATE_PART('month', birth_datetime)) as MONTH_OF_BIRTH,
    RACE_CONCEPT_ID,
    ETHNICITY_CONCEPT_ID,
-   LOCATION_ID,
+   NULL as LOCATION_ID,
    PROVIDER_ID,
    CARE_SITE_ID,
    NULL as PERSON_SOURCE_VALUE,
@@ -221,7 +235,7 @@ SELECT
 
 --OBSERVATION_PERIOD
 --OUTPUT_FILE: OBSERVATION_PERIOD.csv
-SELECT
+SELECT DISTINCT
    OBSERVATION_PERIOD_ID,
    p.PERSON_ID,
    CAST(OBSERVATION_PERIOD_START_DATE as TIMESTAMP) as OBSERVATION_PERIOD_START_DATE,
@@ -235,7 +249,7 @@ SELECT
 
 --VISIT_OCCURRENCE
 --OUTPUT_FILE: VISIT_OCCURRENCE.csv
-SELECT
+SELECT DISTINCT
    VISIT_OCCURRENCE_ID,
    n.PERSON_ID,
    VISIT_CONCEPT_ID,
@@ -261,7 +275,7 @@ WHERE v.VISIT_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')
 
 --CONDITION_OCCURRENCE
 --OUTPUT_FILE: CONDITION_OCCURRENCE.csv
-SELECT
+SELECT DISTINCT
    CONDITION_OCCURRENCE_ID,
    n.PERSON_ID,
    CONDITION_CONCEPT_ID,
@@ -285,7 +299,7 @@ WHERE co.CONDITION_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')
 
 --DRUG_EXPOSURE
 --OUTPUT_FILE: DRUG_EXPOSURE.csv
-SELECT
+SELECT DISTINCT
    DRUG_EXPOSURE_ID,
    n.PERSON_ID,
    DRUG_CONCEPT_ID,
@@ -315,7 +329,7 @@ WHERE de.DRUG_EXPOSURE_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD') and @da
 
 --DEVICE_EXPOSURE
 --OUTPUT_FILE: DEVICE_EXPOSURE.csv
-SELECT
+SELECT DISTINCT
    DEVICE_EXPOSURE_ID,
    n.PERSON_ID,
    DEVICE_CONCEPT_ID,
@@ -338,7 +352,7 @@ WHERE de.DEVICE_EXPOSURE_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD');
 
 --PROCEDURE_OCCURRENCE
 --OUTPUT_FILE: PROCEDURE_OCCURRENCE.csv
-SELECT
+SELECT DISTINCT
    PROCEDURE_OCCURRENCE_ID,
    n.PERSON_ID,
    PROCEDURE_CONCEPT_ID,
@@ -360,7 +374,7 @@ WHERE po.PROCEDURE_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD');
 
 --MEASUREMENT
 --OUTPUT_FILE: MEASUREMENT.csv
-SELECT
+SELECT DISTINCT
    MEASUREMENT_ID,
    n.PERSON_ID,
    MEASUREMENT_CONCEPT_ID,
@@ -388,7 +402,7 @@ WHERE @dateRangePartition;
 
 --OBSERVATION
 --OUTPUT_FILE: OBSERVATION.csv
-SELECT
+SELECT DISTINCT
    OBSERVATION_ID,
    n.PERSON_ID,
    OBSERVATION_CONCEPT_ID,
@@ -415,7 +429,7 @@ WHERE o.OBSERVATION_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')
 
 --DEATH
 --OUTPUT_FILE: DEATH.csv
-SELECT
+SELECT DISTINCT
    n.PERSON_ID,
     CAST(DEATH_DATE as TIMESTAMP) as DEATH_DATE,
 	CAST(DEATH_DATETIME as TIMESTAMP) as DEATH_DATETIME,
@@ -430,7 +444,7 @@ WHERE d.DEATH_DATE >= TO_DATE('2020-01-01', 'YYYY-MM-DD');
 
 --LOCATION
 --OUTPUT_FILE: LOCATION.csv
-SELECT
+SELECT DISTINCT
    l.LOCATION_ID,
    null as ADDRESS_1, -- to avoid identifying information
    null as ADDRESS_2, -- to avoid identifying information
@@ -451,7 +465,7 @@ JOIN (
 
 --CARE_SITE
 --OUTPUT_FILE: CARE_SITE.csv
-SELECT
+SELECT DISTINCT
    cs.CARE_SITE_ID,
    CARE_SITE_NAME,
    PLACE_OF_SERVICE_CONCEPT_ID,
@@ -470,7 +484,7 @@ JOIN (
 
 --PROVIDER
 --OUTPUT_FILE: PROVIDER.csv
-SELECT
+SELECT DISTINCT
    pr.PROVIDER_ID,
    null as PROVIDER_NAME, -- to avoid accidentally identifying sites
    null as NPI, -- to avoid accidentally identifying sites
@@ -516,7 +530,7 @@ JOIN (
 
 --DRUG_ERA
 --OUTPUT_FILE: DRUG_ERA.csv
-SELECT
+SELECT DISTINCT
    DRUG_ERA_ID,
    n.PERSON_ID,
    DRUG_CONCEPT_ID,
@@ -531,7 +545,7 @@ WHERE DRUG_ERA_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD');
 
 --CONDITION_ERA
 --OUTPUT_FILE: CONDITION_ERA.csv
-SELECT
+SELECT DISTINCT
    CONDITION_ERA_ID,
    n.PERSON_ID,
    CONDITION_CONCEPT_ID,
@@ -546,62 +560,62 @@ WHERE CONDITION_ERA_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD');
 SELECT * from
 (select
    'PERSON' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.PERSON p JOIN @resultsDatabaseSchema.N3C_COHORT n ON p.PERSON_ID = n.PERSON_ID) as ROW_COUNT
+   (select count(DISTINCT p.person_id) from @cdmDatabaseSchema.PERSON p JOIN @resultsDatabaseSchema.N3C_COHORT n ON p.PERSON_ID = n.PERSON_ID) as ROW_COUNT
 
 UNION
 
 select
    'OBSERVATION_PERIOD' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.OBSERVATION_PERIOD op JOIN @resultsDatabaseSchema.N3C_COHORT n ON op.PERSON_ID = n.PERSON_ID AND (OBSERVATION_PERIOD_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD') OR OBSERVATION_PERIOD_END_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD'))) as ROW_COUNT
+   (select count(DISTINCT op.observation_period_id) from @cdmDatabaseSchema.OBSERVATION_PERIOD op JOIN @resultsDatabaseSchema.N3C_COHORT n ON op.PERSON_ID = n.PERSON_ID AND (OBSERVATION_PERIOD_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD') OR OBSERVATION_PERIOD_END_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD'))) as ROW_COUNT
 
 UNION
 
 select
    'VISIT_OCCURRENCE' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.VISIT_OCCURRENCE vo JOIN @resultsDatabaseSchema.N3C_COHORT n ON vo.PERSON_ID = n.PERSON_ID AND VISIT_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT vo.visit_occurrence_id) from @cdmDatabaseSchema.VISIT_OCCURRENCE vo JOIN @resultsDatabaseSchema.N3C_COHORT n ON vo.PERSON_ID = n.PERSON_ID AND VISIT_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'CONDITION_OCCURRENCE' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.CONDITION_OCCURRENCE co JOIN @resultsDatabaseSchema.N3C_COHORT n ON co.PERSON_ID = n.PERSON_ID AND CONDITION_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT co.condition_occurrence_id) from @cdmDatabaseSchema.CONDITION_OCCURRENCE co JOIN @resultsDatabaseSchema.N3C_COHORT n ON co.PERSON_ID = n.PERSON_ID AND CONDITION_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'DRUG_EXPOSURE' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.DRUG_EXPOSURE de JOIN @resultsDatabaseSchema.N3C_COHORT n ON de.PERSON_ID = n.PERSON_ID AND DRUG_EXPOSURE_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT de.drug_exposure_id) from @cdmDatabaseSchema.DRUG_EXPOSURE de JOIN @resultsDatabaseSchema.N3C_COHORT n ON de.PERSON_ID = n.PERSON_ID AND DRUG_EXPOSURE_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'DEVICE_EXPOSURE' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.DEVICE_EXPOSURE de JOIN @resultsDatabaseSchema.N3C_COHORT n ON de.PERSON_ID = n.PERSON_ID AND DEVICE_EXPOSURE_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT de.device_exposure_id) from @cdmDatabaseSchema.DEVICE_EXPOSURE de JOIN @resultsDatabaseSchema.N3C_COHORT n ON de.PERSON_ID = n.PERSON_ID AND DEVICE_EXPOSURE_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'PROCEDURE_OCCURRENCE' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.PROCEDURE_OCCURRENCE po JOIN @resultsDatabaseSchema.N3C_COHORT n ON po.PERSON_ID = n.PERSON_ID AND PROCEDURE_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT po.procedure_occurrence_id) from @cdmDatabaseSchema.PROCEDURE_OCCURRENCE po JOIN @resultsDatabaseSchema.N3C_COHORT n ON po.PERSON_ID = n.PERSON_ID AND PROCEDURE_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'MEASUREMENT' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.MEASUREMENT m JOIN @resultsDatabaseSchema.N3C_COHORT n ON m.PERSON_ID = n.PERSON_ID AND MEASUREMENT_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT m.measurement_id) from @cdmDatabaseSchema.MEASUREMENT m JOIN @resultsDatabaseSchema.N3C_COHORT n ON m.PERSON_ID = n.PERSON_ID AND MEASUREMENT_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'OBSERVATION' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.OBSERVATION o JOIN @resultsDatabaseSchema.N3C_COHORT n ON o.PERSON_ID = n.PERSON_ID AND OBSERVATION_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(DISTINCT o.observation_id) from @cdmDatabaseSchema.OBSERVATION o JOIN @resultsDatabaseSchema.N3C_COHORT n ON o.PERSON_ID = n.PERSON_ID AND OBSERVATION_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 SELECT
    'DEATH' as TABLE_NAME,
-  (select count(*) from @cdmDatabaseSchema.DEATH d JOIN @resultsDatabaseSchema.N3C_COHORT n ON d.PERSON_ID = n.PERSON_ID AND DEATH_DATE >= TO_DATE('2020-01-01', 'YYYY-MM-DD')) as ROW_COUNT
-
+  (select count(*) from @cdmDatabaseSchema.DEATH d JOIN @resultsDatabaseSchema.N3C_COHORT n ON d.PERSON_ID = n.PERSON_ID AND DEATH_DATE >= TO_DATE(TO_CHAR(2020,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
+  -- no distinct possible in count.  may need to place in subquery
 UNION
 
 select
@@ -632,7 +646,7 @@ UNION
 
  select
    'PROVIDER' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.PROVIDER pr
+   (select count(DISTINCT pr.provider_id) from @cdmDatabaseSchema.PROVIDER pr
 	JOIN (
        SELECT DISTINCT PROVIDER_ID
        FROM @cdmDatabaseSchema.VISIT_OCCURRENCE vo
@@ -665,17 +679,17 @@ UNION
 
 select
    'DRUG_ERA' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.DRUG_ERA de JOIN @resultsDatabaseSchema.N3C_COHORT n ON de.PERSON_ID = n.PERSON_ID AND DRUG_ERA_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(distinct de.drug_era_id) from @cdmDatabaseSchema.DRUG_ERA de JOIN @resultsDatabaseSchema.N3C_COHORT n ON de.PERSON_ID = n.PERSON_ID AND DRUG_ERA_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 
 UNION
 
 select
    'CONDITION_ERA' as TABLE_NAME,
-   (select count(*) from @cdmDatabaseSchema.CONDITION_ERA JOIN @resultsDatabaseSchema.N3C_COHORT ON CONDITION_ERA.PERSON_ID = N3C_COHORT.PERSON_ID AND CONDITION_ERA_START_DATE >= TO_DATE('2018-01-01', 'YYYY-MM-DD')) as ROW_COUNT
+   (select count(distinct ce.condition_era_id) from @cdmDatabaseSchema.CONDITION_ERA ce JOIN @resultsDatabaseSchema.N3C_COHORT ON ce.PERSON_ID = N3C_COHORT.PERSON_ID AND CONDITION_ERA_START_DATE >= TO_DATE(TO_CHAR(2018,'0000')||'-'||TO_CHAR(01,'00')||'-'||TO_CHAR(01,'00'), 'YYYY-MM-DD')) as ROW_COUNT
 ) s;
 
 
 --n3c_control_map
 --OUTPUT_FILE: N3C_CONTROL_MAP.csv
-SELECT *
+SELECT DISTINCT *
 FROM @resultsDatabaseSchema.N3C_CONTROL_MAP;
