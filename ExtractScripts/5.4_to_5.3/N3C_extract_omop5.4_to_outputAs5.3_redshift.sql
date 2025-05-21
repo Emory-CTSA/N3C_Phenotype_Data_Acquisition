@@ -20,6 +20,8 @@ SCRIPT ASSUMPTIONS:
 RELEASE DATE: 2-10-2020
 **/
 
+-- TODO: change dates past the study end date to NULL 
+
 --MANIFEST TABLE: CHANGE PER YOUR SITE'S SPECS
 --OUTPUT_FILE: MANIFEST.csv
 select

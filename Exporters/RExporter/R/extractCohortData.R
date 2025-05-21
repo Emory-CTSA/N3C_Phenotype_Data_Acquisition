@@ -202,15 +202,15 @@ runExtraction  <- function(
   sqlsDT[,dateColumn:=identifyDateColumn(sql)][,daterangeJoin:=grepl("{daterange_clause}",sql,fixed=TRUE)]
   sqlsDT[,startColumn:=identifyDateColumn(sql,regexp="[A-Za-z_]*_START_DATE")][,endColumn:=identifyDateColumn(sql,regexp="[A-Za-z_]*_END_DATE")]
   setindex(sqlsDT,fileName)
-  sqlsDT[,limitReplace:=paste0('AND ',overlap_fn,'(',paste(startDate,endDate,ifelse(is.na(startColumn),dateColumn,startColumn),ifelse(is.na(endColumn),'NULL',endColumn),sep=','),')')]
-  sqlsDT[,newSql:=mapply(function(x,y) {gsub(validDates,y,x,fixed=TRUE)}, sql, limitReplace)]
+  # sqlsDT[,limitReplace:=paste0('AND ',overlap_fn,'(',paste(startDate,endDate,ifelse(is.na(startColumn),dateColumn,startColumn),ifelse(is.na(endColumn),'NULL',endColumn),sep=','),')')]
+  # sqlsDT[,newSql:=mapply(function(x,y) {gsub(validDates,y,x,fixed=TRUE)}, sql, limitReplace)]
   # set incremental date-time substitutions
   innerJoinDT <- sqlsDT[daterangeJoin==TRUE,.(fileName,sql,dateColumn)][,cj:=TRUE]
   drExpandDT <- buildDateRanges(drStart, drEnd, monthsToIncrement)[,cj:=TRUE]
   cjDT <- innerJoinDT[drExpandDT,allow.cartesian=TRUE, on=c('cj')][,cj:=NULL]
   cjDT[,newFileName:=gsub(pattern="\\.csv",replacement="",fileName,ignore.case=TRUE)][,newFileName:=paste0(newFileName,fnAppend,".csv")]
   cjDT[,drcReplace:=paste0("(",dateColumn," >= '",periodStart,"' AND ",dateColumn," < '",periodEnd,"')")]
-  cjDT[,newSql:=mapply(function(x,y) {gsub("{daterange_clause}",y,x,fixed=TRUE)}, newSql, drcReplace)]
+  cjDT[,newSql:=mapply(function(x,y) {gsub("{daterange_clause}",y,x,fixed=TRUE)}, sql, drcReplace)]
   cjDT <- cjDT[,.(fileName,newFileName,newSql)]
   setkey(sqlsDT,fileName)
   setkey(cjDT,fileName)
@@ -277,7 +277,7 @@ runExtraction  <- function(
       })
     }
   } else {
-    warning("No data to update")
+    warning("No updated data to download (based on local file time alone)")
   }
   # Disconnect from database
   try(DatabaseConnector::disconnect(conn))
@@ -291,7 +291,7 @@ runExtraction  <- function(
     # print(recombineDT)
     for (cfn in unique(recombineDT[,fileName])) {
       print(paste("Checking",cfn,"..."))
-      if (fileNoUpdate(cfn, recombineDT, dfd) == TRUE) {
+      if (file.exists(paste0(dfd,cfn)) & (fileNoUpdate(cfn, recombineDT, dfd) == TRUE)) {
         print(paste("    File",cfn,"does not need to be updated. All partial files are older than existing combined file."))
         next
       }
