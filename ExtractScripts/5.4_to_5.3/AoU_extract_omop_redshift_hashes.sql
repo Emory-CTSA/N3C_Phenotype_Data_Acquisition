@@ -219,7 +219,11 @@ SELECT
       ELSE CAST(DRUG_EXPOSURE_END_DATETIME as TIMESTAMP) 
    END as DRUG_EXPOSURE_END_DATETIME, -- fix for post study end dates
    DRUG_TYPE_CONCEPT_ID,
-   CAST(VERBATIM_END_DATE as TIMESTAMP) as VERBATIM_END_DATE,
+   CASE
+      WHEN CAST(VERBATIM_END_DATE as TIMESTAMP) > TO_DATE('@endDate','YYYY-MM-DD')
+      THEN NULL 
+      ELSE CAST(VERBATIM_END_DATE as TIMESTAMP) 
+   END as VERBATIM_END_DATE, -- fix for post study end dates
    STOP_REASON,
    REFILLS,
    QUANTITY,
@@ -410,8 +414,8 @@ JOIN @resultsDatabaseSchema.CLAD_COHORT c
 --OUTPUT_FILE: LOCATION.csv
 SELECT
    n.newID as LOCATION_ID,
-   ADDRESS_1, -- AoU suppresses to avoid identifying information
-   ADDRESS_2, -- aou null to avoid identifying information
+   ADDRESS_1, -- N3C suppresses to avoid identifying information
+   ADDRESS_2, -- N3C null to avoid identifying information
    CITY,
    STATE,
    ZIP,

@@ -1,5 +1,5 @@
 #break up the single SQL file into individual statements and output file names
-parse_sql <- function(sqlFile) {
+parse_sql <- function (sqlFile) { # replacement for N3C's default parse_sql to allow for function definitions and blocks containing semicolons
   sql <- ""
   output_file_tag <- "OUTPUT_FILE:"
   inrows <- unlist(strsplit(sqlFile, "\n"))
@@ -7,12 +7,31 @@ parse_sql <- function(sqlFile) {
   outputs <- list()
   statementnum <- 0
   output_file <- ""
+  opendoubledollar = FALSE
+  # best practice would be to verify that $$ is not within a quote or a comment block, etc
+  # some sql dialects don't use $$, but use DECLARE and/or BEGIN followed by END to mark the block
+  # also a $$ can typically be labelled, but we are only supporting the basics and not allowing that syntax
   for (i in 1:length(inrows)) {
     sql = paste(sql, inrows[i], sep = "\n")
-    if (regexpr("OUTPUT_FILE", inrows[i]) != -1) {
-      output_file <- sub("--OUTPUT_FILE: ", "", inrows[i])
+    ddpos <- regexpr("$$", inrows[i], fixed=TRUE)
+    if (!opendoubledollar) {
+      if (ddpos > -1) {
+        opendoubledollar <- TRUE # (!opendoubledollar)
+        next # start $$ block; other tokens on this line don't matter
+      }
+      if (regexpr("OUTPUT_FILE", inrows[i]) != -1) {
+        output_file <- sub("--OUTPUT_FILE: ", "", inrows[i])
+      }
+    } else {
+      if (ddpos > -1) { # look for closing $$
+        opendoubledollar <- FALSE # (!opendoubledollar)
+      } else {
+        next # still an open $$ block
+      }
     }
-    if (regexpr(";", inrows[i]) != -1) {
+    scposarr <- unlist(gregexpr(";", inrows[i]))
+    scpos <- scposarr[length(scposarr)]
+    if ((scpos > ddpos) | (i==length(inrows))) { # check if the last semicolon is after the closing $$
       statementnum <- statementnum + 1
       statements[[statementnum]] = sql
       outputs[[statementnum]] = output_file
@@ -20,7 +39,181 @@ parse_sql <- function(sqlFile) {
     }
   }
   arr <- mapply(c, outputs, statements)
-  dt <- as.data.table(mapply(c, outputs, statements), colnames=c("outputs","statements"))
+  dt <- as.data.table(mapply(c, outputs, statements), colnames = c("outputs", "statements"))
+}
+
+is.wholenumber <- function(x, tol = .Machine$double.eps^0.5) { return(abs(x - round(x)) < tol) }
+
+.createErrorReport <- function(dbms, message, sql, fileName, prependDate=FALSE, mode="w") { # added function parameters vs the function provided in DatabaseConnector
+  report <- c("DBMS:\n", dbms, "\n\nError:\n", message, "\n\nSQL:\n", sql, "\n\n", .systemInfo())
+  if (prependDate) {
+    fn <- paste0(format(Sys.Date(),'%Y%m%d'),'_',fileName)
+  }  else {
+    fn <- fileName
+  }
+  fileConn <- file(fn, open=mode)
+  writeChar(report, fileConn, eos = NULL)
+  close(fileConn)
+  abort(paste("Error executing SQL:",
+              message,
+              paste("An error report has been created at", fn),
+              sep = "\n"
+  ), call. = FALSE)
+}
+
+executeSql <- function(connection, # replaces fn (added function parameters) from DatabaseConnector
+                       sql,
+                       profile = FALSE,
+                       progressBar = !as.logical(Sys.getenv("TESTTHAT", unset = FALSE)),
+                       reportOverallTime = TRUE,
+                       errorReportFile = file.path(getwd(), "errorReportSql.txt"),
+                       runAsBatch = FALSE,
+                       noSplit = FALSE) {
+  library("DatabaseConnector")
+  if (inherits(connection, "DatabaseConnectorJdbcConnection") && rJava::is.jnull(connection@jConnection)) {
+    abort("Connection is closed")
+  }
+  
+  startTime <- Sys.time()
+  dbms <- dbms(connection)
+  
+  if (inherits(connection, "DatabaseConnectorJdbcConnection") &&
+      dbms == "redshift" &&
+      rJava::.jcall(connection@jConnection, "Z", "getAutoCommit")) {
+    # Turn off autocommit for RedShift to avoid this issue:
+    # https://github.com/OHDSI/DatabaseConnector/issues/90
+    DatabaseConnector:::trySettingAutoCommit(connection, FALSE)
+    on.exit(DatabaseConnector:::trySettingAutoCommit(connection, TRUE))
+  }
+  
+  batched <- runAsBatch && supportsBatchUpdates(connection)
+  if (noSplit) { 
+    sqlStatements <- sql 
+  } else {
+    sqlStatements <- SqlRender::splitSql(sql)
+  }
+  rowsAffected <- c()
+  if (batched) {
+    batchSize <- 1000
+    for (start in seq(1, length(sqlStatements), by = batchSize)) {
+      end <- min(start + batchSize - 1, length(sqlStatements))
+      
+      statement <- rJava::.jcall(connection@jConnection, "Ljava/sql/Statement;", "createStatement")
+      batchSql <- c()
+      for (i in start:end) {
+        sqlStatement <- sqlStatements[i]
+        batchSql <- c(batchSql, sqlStatement)
+        rJava::.jcall(statement, "V", "addBatch", as.character(sqlStatement), check = FALSE)
+      }
+      if (profile) {
+        SqlRender::writeSql(paste(batchSql, collapse = "\n\n"), sprintf("statements_%s_%s.sql", start, end))
+      }
+      DatabaseConnector:::logTrace(paste("Executing SQL:", truncateSql(batchSql)))
+      tryCatch(
+        {
+          startQuery <- Sys.time()
+          rowsAffected <- c(rowsAffected, rJava::.jcall(statement, "[J", "executeLargeBatch"))
+          delta <- Sys.time() - startQuery
+          if (profile) {
+            rlang::inform(paste("Statements", start, "through", end, "took", delta, attr(delta, "units")))
+          }
+          DatabaseConnector:::logTrace(paste("Statements took", delta, attr(delta, "units")))
+        },
+        error = function(err) {
+          .createErrorReport(dbms, err$message, paste(batchSql, collapse = "\n\n"), errorReportFile, prependDate=TRUE, mode="a")
+        },
+        finally = {
+          rJava::.jcall(statement, "V", "close")
+        }
+      )
+    }
+  } else {
+    if (progressBar) {
+      pb <- txtProgressBar(style = 3)
+    }
+    
+    for (i in 1:length(sqlStatements)) {
+      sqlStatement <- sqlStatements[i]
+      if (profile) {
+        fileConn <- file(paste("statement_", i, ".sql", sep = ""))
+        writeChar(sqlStatement, fileConn, eos = NULL)
+        close(fileConn)
+      }
+      tryCatch(
+        {
+          startQuery <- Sys.time()
+          rowsAffected <- c(rowsAffected, lowLevelExecuteSql(connection, sqlStatement))
+          delta <- Sys.time() - startQuery
+          if (profile) {
+            rlang::inform(paste("Statement ", i, "took", delta, attr(delta, "units")))
+          }
+        },
+        error = function(err) {
+          DatabaseConnector:::.createErrorReport(dbms, err$message, sqlStatement, errorReportFile, prependDate=TRUE, mode="a")
+        }
+      )
+      if (progressBar) {
+        setTxtProgressBar(pb, i / length(sqlStatements))
+      }
+    }
+    if (progressBar) {
+      close(pb)
+    }
+  }
+  # Spark throws error 'Cannot use commit while Connection is in auto-commit mode.'. However, also throws error when trying to set autocommit on or off:
+  if (dbms != "spark" && inherits(connection, "DatabaseConnectorJdbcConnection") && !rJava::.jcall(connection@jConnection, "Z", "getAutoCommit")) {
+    rJava::.jcall(connection@jConnection, "V", "commit")
+  }
+  
+  if (reportOverallTime) {
+    delta <- Sys.time() - startTime
+    rlang::inform(paste("Executing SQL took", signif(delta, 3), attr(delta, "units")))
+  }
+  invisible(rowsAffected)
+}
+
+create_crosswalks <- function(
+    connectionDetails,
+    sqlFilePath,
+    cdmDatabaseSchema = "omop",
+    resultsDatabaseSchema = "n3c",
+    cohortTable = 'CLAD_COHORT',
+    hash_fn = 'FNV_HASH',
+    overlap_fn = 'OVERLAPS',
+    startDate = '1970-01-01', 
+    endDate = '2099-12-31',
+    ...
+) {
+  # load source sql file
+  src_sql <- SqlRender::readSql(sqlFilePath)
+  
+  # replace parameters with values
+  src_sql <- SqlRender::render(
+    sql = src_sql,
+    warnOnMissingParameters = FALSE,
+    cdmDatabaseSchema = cdmDatabaseSchema,
+    resultsDatabaseSchema = resultsDatabaseSchema,
+    cohortTable = cohortTable,
+    hash_fn = hash_fn,
+    overlap_fn = overlap_fn,
+    startDate = startDate,
+    endDate = endDate,
+    ...
+  )
+  nonDF <- c("MANIFEST.csv","DATA_COUNTS.csv","EXTRACT_VALIDATION.csv","DATA_COUNTS_APPEND.csv")
+  # split script into chunks (to produce separate output files)
+  allSQL <- parse_sql(src_sql)
+  processDT <- data.table::transpose(data.table::as.data.table(allSQL))
+  setnames(processDT,c("fileName","sql"))
+  nfiles <- processDT[,.N]
+  if (nfiles > 0) {
+    conn <- DatabaseConnector::connect(connectionDetails)
+    # setDF(processDT)
+    returnedResults <- executeSql(conn, sql = processDT[,sql], noSplit=TRUE) # consider using errorReportFile parameter
+    # documented at https://github.com/OHDSI/DatabaseConnector/blob/f0d479082b9f127d18eed65fa70adf6f17418e5c/R/Sql.R#L399
+    # print(returnedResults)
+  }
+  return(returnedResults)
 }
 
 fileRecent <- function(filePath, daysToCheck) {
@@ -55,7 +248,7 @@ buildDateRanges <- function(dateRangeStart, dateRangeEnd, monthsToIncrement) {
     while (ds < drEnd) {
       periodStart = c(periodStart,format(ds,'%Y-%m-%d'))
       de <- ds %m+% months(monthsToIncrement)
-      if (de > drEnd) de <- drEnd
+      if (de >= drEnd) de <- drEnd %m+% days(1)
       periodEnd = c(periodEnd, format(de, '%Y-%m-%d'))
       fnAppend = c(fnAppend,paste0(format(ds,"%Y%m%d-"),format(de,"%Y%m%d")))
       ds <- de
@@ -98,7 +291,7 @@ first.defined <- function(...) { # first parameter with a value (non-nully)
   return(unlist(namedlist[1],use.names=FALSE))
 }
 
-DBreconnect <- function(oldCnx) {
+DBreconnect <- function(oldCnx) { # does not currently work as desired
     retval <- NULL
     if ("ConnectionDetails" %in% class(oldCnx)) {
         argList <- list()
@@ -124,13 +317,10 @@ DBreconnect <- function(oldCnx) {
         #    oracleDriver=argList$oracleDriver,
         #    pathToDriver=argList$pathToDriver
         # )
+        print(paste("connection details re-created:", cdd$server(), labels(cdd)))
         retval <- DatabaseConnector::connect(cdd)
     }
     return(retval)
-}
-
-fillInLimits <- function(x) {
-
 }
 
 runExtraction  <- function(
@@ -155,9 +345,6 @@ runExtraction  <- function(
     daysToCheck <- daysToCheck - ifelse(("dataLatencyNumDays" %in% dotdotdots) & (!is.na(as.numeric(dataLatencyNumDays))),as.numeric(dataLatencyNumDays),0) 
     if (daysToCheck < 0) daysToCheck <- 0
   }
-#  if ("monthsToIncrement" %in% dotdotdots) {ifelse(is.integer(monthsToIncrement), monthsToIncrement, NA)} else {
-#    monthsToIncrement <- NA
-#  }
   monthsToIncrement <- ifelse(('monthsToIncrement' %in% dotdotdots) & (is.integer(monthsToIncrement)),monthsToIncrement,NA)
   startDate <- first.defined(startDate, drStartShifted, drStart, dateRangeStart)
   endDate <- first.defined(endDate, drEndShifted, drEnd, dateRangeEnd) # TODO: consider checking LOCAL to see if endDate is in ...s, if not, don't check for global endDate until after drEndShifted
@@ -266,7 +453,7 @@ runExtraction  <- function(
         }
         print("***Resetting Database Connection!***")
         # browser()
-        disconnect(conn)
+        # disconnect(conn)
         conn <- DBreconnect(connectionDetails)
         # next # next gives "no loop for break/next, jumping to top level" which is probably not what we want.
         # stop() # don't quit - just go to next file, unless dup primary keys
